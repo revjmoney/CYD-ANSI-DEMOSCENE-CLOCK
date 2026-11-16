@@ -1,0 +1,12 @@
+.pio/
+.vscode/
+# downloaded/converted ANSI art: copyrighted by the artists, fetched at build time
+ansi_src/
+data/ansi/
+sd/
+# local flash backup of the board and screenshots
+backup/
+shots/
+firmware_bins/
+__pycache__/
+.superpowers/

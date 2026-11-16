@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RotatoCAM :: 5-axis for the rest of us</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  #crt{position:relative;line-height:0}
+  #scr{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+  #crt.fx::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.22) 3px,rgba(0,0,0,0) 4px),
+               radial-gradient(ellipse at center,rgba(0,0,0,0) 62%,rgba(0,0,0,.55) 100%)}
+  #crt.fx #scr{filter:saturate(1.08) contrast(1.05) drop-shadow(0 0 3px rgba(120,200,255,.25))}
+  body.header{display:block;height:auto;overflow:auto}
+  html:has(body.header){overflow:auto}
+  body.header #crt{width:100%}
+  body.full{display:block;height:auto;overflow:auto}
+  html:has(body.full){overflow:auto}
+  body.full #crt{margin:0 auto;width:max-content}
+</style>
+</head>
+<body>
+<div id="crt" class="fx"><canvas id="scr" width="640" height="400"></canvas></div>
+<script>
+/* RotatoCAM ANSI splash -- self-contained, no external files.
+   Font: IBM VGA 8x16 ROM (via VileR's vga-text-mode-fonts). Keys:
+   R replay | B baud | M mode (bbs/scroll/instant) | C crt fx | SPACE pause | H header layout | F full-height page vs 25-line screen
+   URL options: ?header  (no modem/status bar, fits page width, loops)  ?header&rows=12 (logo+tagline strip)   ?baud=2400   ?mode=scroll|bbs|instant   ?nofx   ?screen (classic 25-line scrolling screen; default is full height, scroll the page) */
+(function(){
+const D = {"w": 80, "h": 24, "tags": ["", "rot", "cam", "shadow", "tag", "pivot", "platter", "part", "label", "shank", "flute", "stock", "tip", "chip", "path", "marq"], "grid": "IAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAsAEAsQEAsgEA2wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEAWwgAIAkAYQcAZgcAZgcAbwcAcgcAZAcAYQcAYgcAbAcAZQcAIAcARAcASQcAWQcAIAcAcwcAaQcAbQcAdQcAbAcAdAcAYQcAbgcAZQcAbwcAdQcAcwcAIAkANQ8ALQ8AYQ8AeA8AaQ8Acw8AIAkAQwsAQQsATQsAIAkAXQgA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA3wEA2wEAsgEAsQEAsAEAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2w8B2w8B2w8B2w8B2w8B2w8BIAcAIAcA3A8B2w8B2w8B2w8B2w8B2w8B3A8BIAcA2w8B2w8B2w8B2w8B2w8B2w8BIAcA3A8B2w8B2w8B2w8B2w8B2w8B3A8BIAcA2w8B2w8B2w8B2w8B2w8B2w8BIAcA3A8B2w8B2w8B2w8B2w8B2w8B3A8BIAcA3A8C2w8C2w8C2w8C2w8C2w8C2w8CIAcA3A8C2w8C2w8C2w8C2w8C2w8C3A8CIAcA2w8C2w8C3A8CIAcA3A8C2w8C2w8CIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wsB2wsBIAcAIAcAIAcA2wsB2wsBIAcA2wsB2wsBIAcAIAcAIAcA2wsB2wsBsAgDIAcAIAcA2wsB2wsBIAcAIAcAsAgD2wsB2wsBIAcAIAcAIAcA2wsB2wsBsAgDIAcAIAcA2wsB2wsBIAcAIAcAsAgD2wsB2wsBIAcAIAcAIAcA2wsB2wsBsAgD2w4C2w4CIAcAIAcAIAcAIAcAIAcAsAgD2w4C2w4CIAcAIAcAIAcA2w4C2w4CsAgD2w4C2w4C3w4C2w4C3w4C2w4C2w4CsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAsjsBsjsBsjsBsjsBsjsBsjsBIAcAsAgDsjsBsjsBIAcAIAcAIAcAsjsBsjsBsAgDIAcAIAcAsjsBsjsBIAcAIAcAIAcAsjsBsjsBsjsBsjsBsjsBsjsBsjsBsAgDIAcAIAcAsjsBsjsBIAcAIAcAIAcAsjsBsjsBIAcAIAcAIAcAsjsBsjsBsAgDsk4Csk4CIAcAIAcAIAcAIAcAIAcAIAcAsk4Csk4Csk4Csk4Csk4Csk4Csk4CsAgDsk4Csk4CIAcA3w4CIAcAsk4Csk4CsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wMB2wMBIAcAIAcA2wMB2wMBIAcAIAcA2wMB2wMBIAcAIAcAIAcA2wMB2wMBsAgDIAcAIAcA2wMB2wMBIAcAIAcAIAcA2wMB2wMBIAcAIAcAIAcA2wMB2wMBsAgDIAcAIAcA2wMB2wMBIAcAIAcAIAcA2wMB2wMBIAcAIAcAIAcA2wMB2wMBsAgD2wwC2wwCIAcAIAcAIAcAIAcAIAcAIAcA2wwC2wwCIAcAIAcAIAcA2wwC2wwCsAgD2wwC2wwCIAcAIAcAIAcA2wwC2wwCsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAshMBshMBIAcAIAcAIAcAshMBshMBIAcAshMBshMBIAcAIAcAIAcAshMBshMBsAgDIAcAIAcAshMBshMBIAcAIAcAIAcAshMBshMBIAcAIAcAIAcAshMBshMBsAgDIAcAIAcAshMBshMBIAcAIAcAIAcAshMBshMBIAcAIAcAIAcAshMBshMBsAgDskwCskwCIAcAIAcAIAcAIAcAIAcAIAcAskwCskwCIAcAIAcAIAcAskwCskwCsAgDskwCskwCIAcAIAcAIAcAskwCskwCsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAsRkBsRkBIAcAIAcAIAcAsRkBsRkBsAgD3wkBsRkBsRkBsRkBsRkBsRkB3wkBsAgDIAcAIAcAsRkBsRkBIAcAIAcAIAcAsRkBsRkBIAcAIAcAIAcAsRkBsRkBsAgDIAcAIAcAsRkBsRkBIAcAIAcAIAcA3wkBsRkBsRkBsRkBsRkBsRkB3wkBsAgD3wQC2wQC2wQC2wQC2wQC2wQC2wQCIAcA2wQC2wQCIAcAIAcAIAcA2wQC2wQCsAgD2wQC2wQCIAcAIAcAIAcA2wQC2wQCsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAsAgDsAgDsAgDsAgDsAgDsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDsAgDsAgDsAgDsAgDsAgDIAcAsAgDsAgDsAgDsAgDsAgDsAgDsAgDIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAsAgDsAgDIAcAIAcAIAcAsAgDsAgDIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcALQgAPQcA8AgAWwgAIAcAIAcANQ8ELQ8EQQ8EWA8ESQ8EUw8EIA8ERg8ETw8EUg8EIA8EVA8ESA8ERQ8EIA8EUg8ERQ8EUw8EVA8EIA8ETw8ERg8EIA8EVQ8EUw8EIAcAIAcAXQgA8AgAPQcALQgAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA+gUOIAUO+gUOIAUO+gUOIAUO+gUOIAUO+QUOIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAWg0IIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3AcA2wcA2wcA2wcA3AcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3AcA2wcA2wcA2wcA3AcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA+gUO+QUO+gUO+QUO+gUO3AUO3AUOIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAswUAIAcAIAcA3AgA2wgA2wgA2wgA2wgA2wgA3AgAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcArgUAQQ0IrwUAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3wUO3wUO3AUO3AUOIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wgAsn8Asn8Asn8Asn8Asn8A2wgAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngA/n4FsngA2wcA3AcA3AcAIAcAIAcAIAcAIAcAIAcAQg0IIAcAIAcAIAcAIAcAIAcA3AcA3AcA2wcAsngA/n4FsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3wUO3wUO3A0OIAcAIAcAIAcAIAcAIAcAIAcA3wgA2wgA2wgA2wgA2wgA2wgA3wgAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcA2wcAIAcAIAcAIAcA3AYHsm4Hsm4Hsm4H3AYHIAcAIAcAIAcA2wcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3w0O3w0O3A0OIAcAIAcAIAcAIAcAIAcA3g4A2w4A3Q4AIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcA2wcAIAcA3AsG3AsG3AsG3AsG3AsG3AsG3AsG3AsG3AsGIAcA2wcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3w0O3A0OIAcAIAcAIAcAIAcA2w8JIAcAIAcA+gYNIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcA3wcAsngAsngAsngAsngAsngAsngAsngAsngAsngAsngAsngA2wcA3wcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3w0O3w0O3A0OIAcAshsKIAcA+Q4NIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA2wcAsngAsngAsngA2wcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3w0OshsKIAcAIAcAIAcA+g4NIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgA3wgAIAcAIAcAIAcAIAcAIAcA3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL3AYL32sMsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAIAcAsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLsgYLIAcAIAcAIAcAIAcAsAEAsQEAsgEA2wEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEA3AEAcgkAQwkAIQkAsgEAsQEAsAEAUgkPbwsPdAoPYQ4PdAwPbw0PQwkPQQsPTQoPIA4PIAwPOggPOggPIAsPIAoPNQ4PLQwPYQ0PeAkPaQsPcwoPIA4PZgwPbw0PcgkPIAsPdAoPaA4PZQwPIA0PcgkPZQsPcwoPdA4PIAwPbw0PZgkPIAsPdQoPcw4PIAwPIA0POggPOggPIAoPIA4PdAwPcg0PdQkPbgsPbgoPaQ4PbwwPbg0PLQkPcgsPZQoPYQ4PZAwPeQ0PIAkPawsPaQoPbg4PZQwPbQ0PYQkPdAsPaQoPYw4PcwwPIA0PIAkPOggPOggPIA4PIAwPYQ0PZAkPYQsP", "font": "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AAB4zMzM2MzGxsbMAAAAAAAA/sbGwMDAwMDAwAAAAAAAAAAA/mxsbGxsbGwAAAAAAAAA/sZgMBgwYMb+AAAAAAAAAAAAftjY2NjYcAAAAAAAAAAAZmZmZmZ8YGDAAAAAAAAAAHbcGBgYGBgYAAAAAAAAAH4YPGZmZjwYfgAAAAAAAAA4bMbG/sbGbDgAAAAAAAA4bMbGxmxsbGzuAAAAAAAAHjAYDD5mZmZmPAAAAAAAAAAAAH7b29t+AAAAAAAAAAAAAwZ+29vzfmDAAAAAAAAAHDBgYHxgYGAwHAAAAAAAAAB8xsbGxsbGxsYAAAAAAAAAAP4AAP4AAP4AAAAAAAAAAAAYGH4YGAAA/wAAAAAAAAAwGAwGDBgwAH4AAAAAAAAADBgwYDAYDAB+AAAAAAAADhsbGBgYGBgYGBgYGBgYGBgYGBgYGNjY2HAAAAAAAAAAABgYAH4AGBgAAAAAAAAAAAAAdtwAdtwAAAAAAAAAOGxsOAAAAAAAAAAAAAAAAAAAAAAAABgYAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAADwwMDAwM7GxsPBwAAAAAANhsbGxsbAAAAAAAAAAAAABw2DBgyPgAAAAAAAAAAAAAAAAAfHx8fHx8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==", "msg": "  RotatoCAM  ::  5-axis for the rest of us  ::  trunnion-ready kinematics  ::  adaptive roughing  ::  collision checks  ::  printed trunnions welcome  ::  no Boeing budget required  ::  RotatoCAM  ::  ", "cyc": [9, 11, 10, 14, 12, 13]};
+const W = D.w, H = D.h, ROWS = 25;
+const PAL = ['#000000','#0000aa','#00aa00','#00aaaa','#aa0000','#aa00aa','#aa5500','#aaaaaa',
+             '#555555','#5555ff','#55ff55','#55ffff','#ff5555','#ff55ff','#ffff55','#ffffff'];
+const RGB = PAL.map(h=>[parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)]);
+const font = Uint8Array.from(atob(D.font), c=>c.charCodeAt(0));
+const raw  = Uint8Array.from(atob(D.grid), c=>c.charCodeAt(0));
+const TAG = D.tags, CYC = D.cyc, MSG = D.msg;
+// CP437 high-half -> code (for drawing our own text strings)
+const CP = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
+const enc = ch => { const c = ch.charCodeAt(0); if (c>=32 && c<127) return c; const i = CP.indexOf(ch); return i<0?63:128+i; };
+const dec = c => c<128 ? String.fromCharCode(c) : CP[c-128];
+const base = [];
+for (let y=0;y<H;y++){ const r=[]; for(let x=0;x<W;x++){ const i=(y*W+x)*3;
+  r.push({c:raw[i], fg:raw[i+1]&15, bg:raw[i+1]>>4, tag:TAG[raw[i+2]]}); } base.push(r); }
+
+const params = new URLSearchParams(location.search);
+let header = params.has('header');
+let full = !params.has('screen');   // default: show every line at once, the page scrolls instead
+const HROWS = Math.min(H, Math.max(1, parseInt(params.get('rows')) || H));   // ?header&rows=12 -> logo + tagline only
+const BAUDS = [2400, 9600, 14400, 28800, 57600];
+let baud = parseInt(params.get('baud')) || 9600;
+const MODES = ['bbs','scroll','instant'];
+let mode = params.get('mode') || 'bbs';
+const crt = document.getElementById('crt');
+if (params.has('nofx')) crt.classList.remove('fx');
+const cv = document.getElementById('scr'), ctx = cv.getContext('2d');
+let img = ctx.createImageData(640, 400);
+
+// pre-render glyph masks
+function cell(px, py, code, fg, bg, clipTop, clipBot){
+  const f = RGB[fg], b = RGB[bg], d = img.data;
+  for (let r=0;r<16;r++){ const yy = py + r; if (yy<clipTop || yy>=clipBot) continue;
+    const bits = font[code*16+r];
+    for (let c=0;c<8;c++){ const xx = px + c; if (xx<0||xx>=640) continue;
+      const o = (yy*640+xx)*4, col = (bits & (0x80>>c)) ? f : b;
+      d[o]=col[0]; d[o+1]=col[1]; d[o+2]=col[2]; d[o+3]=255; } }
+}
+function text(row, x, s, fg, bg){ const out=[]; for (const ch of s) out.push({c:enc(ch),fg,bg,tag:''}); return out; }
+function line(s, fg, bg=0){ const r=[]; for(let x=0;x<W;x++) r.push({c:32,fg,bg,tag:''});
+  let x=0; for (const ch of s){ if (x<W) r[x++] = {c:enc(ch),fg,bg,tag:''}; } return r; }
+
+// --------------- idle effects (shared logic with anim.py) ---------------
+function fx(c, x, y, t){
+  let ch=c.c, fg=c.fg, bg=c.bg;
+  switch(c.tag){
+    case 'rot': case 'cam': { const band = ((t*40)%130)-25, d = Math.abs(x+(y-3)*1.2-band);
+      if (d<1.6) fg=15; else if (d<3.5) fg|=8; break; }
+    case 'path': { const ph = ((x - t*30)%14+14)%14; fg = ph<4?13:5; if (x>52) fg=13; break; }
+    case 'pivot': fg = Math.sin(t*5)>0?14:6; break;
+    case 'flute': ch = (Math.floor(t*14+y)%2)? 178:177; break;
+    case 'chip': ch = [249,250,32][Math.floor(t*9+x*7+y*3)%3]; break;
+    case 'tag': { const d = Math.abs(x-(((t*25)%110)-15)); fg = d>2?15:11; break; }
+    case 'marq': ch = 32; break;
+  }
+  return [ch,fg,bg];
+}
+
+// --------------- session (what the "terminal" received) ---------------
+const fmt = n => String(n).padStart(2,'0');
+function preamble(){
+  return [
+    line('ATDT 1-800-ROTATOCAM', 7),
+    line('', 7),
+    line('CONNECT '+baud+'/ARQ/V.34/LAPM/V.42BIS', 15),
+    line('', 7),
+    line('RotatoCAM BBS :: node 1 :: ANSI graphics detected', 3),
+    line('Loading login screen ...', 8),
+    line('', 7),
+  ];
+}
+let lines, totalChars, lineStart, t0, paused=false, pauseAt=0, connectT0;
+function visibleLen(r){ let n=W; while(n>0 && r[n-1].c===32 && r[n-1].bg===0) n--; return Math.max(n,1); }
+function reset(){
+  const pre = (mode==='bbs' && !header) ? preamble() : [];
+  lines = pre.concat(base);
+  lineStart=[]; totalChars=0;
+  for (const r of lines){ lineStart.push(totalChars); totalChars += visibleLen(r)+2; } // +CR/LF
+  t0 = performance.now()/1000; connectT0 = t0;
+}
+// returns progress in chars
+function charsAt(t){
+  if (mode==='instant' || header) return Infinity;
+  return t * baud/10;   // 10 bits per char (8N1)
+}
+
+function draw(now){
+  const T = now/1000;
+  const t = Math.max(0, (paused ? pauseAt : T) - t0);
+  const rowsAvail = header ? HROWS : (full ? lines.length : ROWS-1);
+  const p = charsAt(t);
+  // which line is being printed
+  let li = lines.length-1, ci = Infinity, done = true;
+  if (p < totalChars){ done=false; li=0; while (li+1<lines.length && lineStart[li+1] <= p) li++; ci = p - lineStart[li]; }
+  const d = img.data;
+  for (let i=0;i<d.length;i+=4){ d[i]=d[i+1]=d[i+2]=0; d[i+3]=255; }
+  // topF = (fractional) index of the line shown on the top screen row
+  let topF;
+  if (mode==='scroll' && !done){
+    // 'scroll' mode: art rises smoothly from the bottom of a blank screen
+    const lt = t*14; li = Math.floor(lt); ci = Infinity;
+    if (li >= lines.length) done = true; else topF = lt - rowsAvail + 1;
+  }
+  if (done){ topF = header ? 0 : lines.length - rowsAvail; li = lines.length-1; ci = Infinity; }
+  else if (full && !header){ topF = 0; }
+  else if (mode!=='scroll'){
+    topF = li - rowsAvail + 1;
+    const since = (p - lineStart[li]) / (baud/10);
+    if (topF > 0 && since < 0.08) topF -= 1 - since/0.08;      // smooth-scroll the new line in
+  }
+  const clipBot = rowsAvail*16;
+  for (let L = Math.floor(topF); L <= Math.floor(topF)+rowsAvail; L++){
+    if (L<0 || L>=lines.length) continue;
+    if (!done && L>li) continue;
+    const py = Math.round((L - topF)*16);
+    const r = lines[L], artY = L - (lines.length - H), isArt = artY>=0;
+    const lim = (!done && L===li) ? ci : W;
+    for (let x=0;x<W && x<lim;x++){
+      let c = r[x], ch=c.c, fg=c.fg, bg=c.bg;
+      if (done && isArt) [ch,fg,bg] = fx(c, x, artY, t);
+      cell(x*8, py, ch, fg, bg, 0, clipBot);
+    }
+    // marquee (smooth pixel scroller with color cycling)
+    if (done && isArt && artY===H-1) {
+      const tt = Math.max(0, (paused ? pauseAt : T) - t0), px = Math.floor(tt*48), start = Math.floor(px/8), off = px%8, sh = Math.floor(tt*8);
+      for (let i=0;i<81;i++){ const j=(start+i)%MSG.length, ch=MSG[j];
+        cell(i*8-off, py, enc(ch), ch===':'?8:CYC[(j+sh)%CYC.length], 0, 0, clipBot); }
+    }
+    // cursor
+    if (!done && L===li && mode!=='scroll' && Math.floor(T*3.75)%2===0){
+      const cx = Math.min(Math.floor(ci), W-1);
+      cell(cx*8, py, 95, 7, 0, 0, clipBot);
+    }
+  }
+  if (!header){
+    // Telix-style status line
+    const el = Math.floor(T - connectT0);
+    const st = ' ALT-Z for Help │ ANSI-BBS │ '+String(baud).padEnd(5)+' N81 │ FDX │ '+
+      (done?'Online ':'Rcv    ')+fmt(Math.floor(el/3600))+':'+fmt(Math.floor(el/60)%60)+':'+fmt(el%60)+' │ R B M C H F';
+    const r = line(st, 0, 3);
+    for (let x=0;x<W;x++){ let c=r[x]; let fg = c.fg;
+      if (dec(c.c)==='│') fg = 1;
+      cell(x*8, rowsAvail*16, c.c, fg, 3, 0, cv.height); }
+  }
+  ctx.putImageData(img, 0, 0);
+  requestAnimationFrame(draw);
+}
+let _done = null;
+function doneAt(t){ if (_done===null) _done = t; return _done; }
+function fit(){
+  const h = header ? HROWS*16 : (full ? (lines.length+1)*16 : 400);
+  if (cv.height !== h){ cv.height = h; img = ctx.createImageData(640, h); }
+  document.body.classList.toggle('header', header);
+  document.body.classList.toggle('full', full && !header);
+  const aspect = 1.2;   // VGA 640x400 shown on a 4:3 tube
+  let w = window.innerWidth, hh = window.innerHeight;
+  let s = (header || full) ? w/640 : Math.min(w/640, hh/(h*aspect));
+  if (full && !header) s = Math.min(s, 2.5);
+  if (!header && s>=1) s = Math.max(1, Math.floor(s*4)/4);
+  cv.style.width = Math.floor(640*s)+'px'; cv.style.height = Math.floor(h*s*aspect)+'px';
+}
+function replay(){ _done=null; reset(); fit(); }
+addEventListener('resize', fit);
+addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if (k==='r') replay();
+  else if (k==='b'){ baud = BAUDS[(BAUDS.indexOf(baud)+1)%BAUDS.length]; replay(); }
+  else if (k==='m'){ mode = MODES[(MODES.indexOf(mode)+1)%MODES.length]; replay(); }
+  else if (k==='c') crt.classList.toggle('fx');
+  else if (k==='h'){ header=!header; fit(); replay(); }
+  else if (k==='f'){ full=!full; replay(); }
+  else if (k===' '){ if (!paused){ paused=true; pauseAt=performance.now()/1000; } else { t0 += performance.now()/1000-pauseAt; paused=false; } e.preventDefault(); }
+  else if (k==='escape'){ t0 -= 1e4; }
+});
+cv.addEventListener('click', replay);
+reset(); fit(); requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
