@@ -535,7 +535,7 @@ struct Clock : Demo {
         int w = 0;
         for (char* c = s; *c; c++) w += *c == ':' ? 4 : 8;
         int x = ox >= 0 ? ox : (mw - w) / 2;
-        memset(mask, 0, mw * mh);
+        memset(mask, 0, (size_t)mw * mh);
         for (char* c = s; *c; c++) {
             int cols = *c == ':' ? 4 : 8, first = *c == ':' ? 2 : 0;
             for (int r = 0; r < 12; r++)
